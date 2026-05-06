@@ -564,11 +564,13 @@ const DAILY_QUOTES=[
 function loadState(){try{return JSON.parse(localStorage.getItem('gymtrack_v4'))||{};}catch(e){return{};}}
 function getState(){
   const s=loadState();
-  // Try to recover streak if missing or count is 0 but we have a backup
   let streak=s.streak||{count:0,last:''};
+  // Try backup streak if count is 0
   if(streak.count===0){
-    const recovered=recoverStreak();
-    if(recovered&&recovered.count>0)streak=recovered;
+    try{
+      const bk=localStorage.getItem('gymtrack_streak_backup');
+      if(bk){const sk=JSON.parse(bk);if(sk.count>0&&Date.now()-sk.savedAt<7*24*60*60*1000)streak=sk;}
+    }catch(e){}
   }
   return{
     seances:s.seances||[],
