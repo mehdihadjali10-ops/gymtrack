@@ -956,12 +956,33 @@ function finishWorkout(){
     return done>0 && done<e.targetSets;
   });
   if(incomplete.length>0){
-    const names=incomplete.map(e=>`${e.name} (${e.sets.filter(s=>s.done).length}/${e.targetSets} séries)`).join(', ');
-    const cont=confirm(`Il te reste des séries sur : ${names}\n\nTu peux continuer ou terminer quand même — ton template restera à ${incomplete[0].targetSets} séries pour la prochaine fois.`);
-    if(!cont)return;
+    const names=incomplete.map(e=>`<strong>${e.name}</strong> (${e.sets.filter(s=>s.done).length}/${e.targetSets} séries)`).join(', ');
+    showIncompletePopup(names,()=>{doFinishWorkout(exs);});
+    return;
   }
-  const existing=st.seances.find(s=>s.type===woSession.type);
+  doFinishWorkout(exs);
+}
+
+function showIncompletePopup(namesHtml, onConfirm){
+  const el=document.createElement('div');
+  el.style.cssText='position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.6);display:flex;align-items:flex-end;animation:fadeIn .2s ease;';
+  el.innerHTML=`
+    <div style="background:var(--card);border-radius:22px 22px 0 0;width:100%;padding:24px 22px calc(24px + var(--sb));box-shadow:0 -8px 40px rgba(0,0,0,0.2);" onclick="event.stopPropagation()">
+      <div style="width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 20px;"></div>
+      <div style="font-size:22px;margin-bottom:10px;text-align:center;">⚠️</div>
+      <div style="font-size:18px;font-weight:800;text-align:center;margin-bottom:10px;">Séance incomplète</div>
+      <div style="font-size:14px;color:var(--text2);text-align:center;line-height:1.6;margin-bottom:20px;">Il te reste des séries sur ${namesHtml}.<br><br>Ton template sera conservé pour la prochaine fois.</div>
+      <button onclick="this.closest('[style*=fixed]').remove();${onConfirm.toString().replace(/"/g,"'")}()" style="width:100%;padding:15px;background:var(--accent);border:none;border-radius:14px;color:#fff;font-size:16px;font-weight:800;cursor:pointer;margin-bottom:10px;box-shadow:0 4px 16px rgba(0,200,150,0.3);">Terminer quand même</button>
+      <button onclick="this.closest('[style*=fixed]').remove()" style="width:100%;padding:13px;background:var(--bg);border:1px solid var(--border);border-radius:14px;color:var(--text2);font-size:15px;font-weight:600;cursor:pointer;">Continuer la séance</button>
+    </div>`;
+  document.body.appendChild(el);
+  void(0);}
+
+function doFinishWorkout(exs){
+  const st2=getState();
+  const existing=st2.seances.find(s=>s.type===woSession.type);
   const prevExs=existing?existing.exs:null;
+  const st=st2;
   if(existing){
     if(!existing.history)existing.history=[];
     // Fix: if same day, replace today's entry instead of adding to history
@@ -1496,39 +1517,58 @@ function renderChart(){
   const labels=pts.map(p=>{const d=new Date(p.date+'T12:00:00');return d.toLocaleDateString('fr-FR',{day:'numeric',month:'short'});});
 
   // Main charge chart
+  // If only 1 point, show a clean single-point bar chart instead
+  const chartType = pts.length === 1 ? 'bar' : 'line';
   progChartInstance=new Chart(document.getElementById('prog-chart'),{
-    type:'line',
+    type: chartType,
     data:{
       labels,
       datasets:[{
         label:'Max kg',data:pts.map(p=>p.maxKg),
-        borderColor:'#00C896',backgroundColor:'rgba(0,200,150,0.08)',
-        tension:.35,fill:true,
-        pointRadius:pts.length===1?6:4,
-        pointHoverRadius:7,
+        borderColor:'#00C896',
+        backgroundColor: pts.length===1 ? 'rgba(0,200,150,0.6)' : 'rgba(0,200,150,0.08)',
+        tension:.4,fill:true,
+        pointRadius: pts.length<=2 ? 6 : 4,
+        pointHoverRadius:8,
         pointBackgroundColor:'#00C896',
-        pointBorderColor:'#fff',pointBorderWidth:2,
-        borderWidth:2.5
+        pointBorderColor:'#fff',pointBorderWidth:2.5,
+        borderWidth:2.5,
+        borderRadius: pts.length===1 ? 8 : 0,
+        // Smooth the line only when we have enough points
+        cubicInterpolationMode: pts.length>=3 ? 'monotone' : 'default',
       }]
     },
     options:{
       responsive:true,maintainAspectRatio:false,
       interaction:{mode:'index',intersect:false},
+      animation:{duration:600,easing:'easeInOutQuart'},
       plugins:{
         legend:{display:false},
         tooltip:{
-          backgroundColor:dk?'#222':'#fff',
+          backgroundColor:dk?'rgba(30,30,30,0.95)':'rgba(255,255,255,0.97)',
           titleColor:dk?'#eee':'#111',
           bodyColor:dk?'#aaa':'#555',
-          borderColor:dk?'#333':'#eee',
+          borderColor:dk?'rgba(255,255,255,0.1)':'rgba(0,0,0,0.08)',
           borderWidth:1,
-          padding:10,
-          callbacks:{label:ctx=>`  ${ctx.raw}kg`}
+          padding:12,
+          cornerRadius:10,
+          callbacks:{
+            title:ctx=>{const p=pts[ctx[0].dataIndex];return new Date(p.date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});},
+            label:ctx=>`${ctx.raw}kg — max cette session`
+          }
         }
       },
       scales:{
-        x:{grid:{color:gridColor},ticks:{color:tickColor,font:{size:11},maxTicksLimit:6}},
-        y:{grid:{color:gridColor},ticks:{color:tickColor,font:{size:11}},beginAtZero:false}
+        x:{
+          grid:{color:gridColor,drawBorder:false},
+          ticks:{color:tickColor,font:{size:11},maxTicksLimit:6,padding:4}
+        },
+        y:{
+          grid:{color:gridColor,drawBorder:false},
+          ticks:{color:tickColor,font:{size:11},padding:6},
+          beginAtZero:false,
+          grace:'5%'
+        }
       }
     }
   });
