@@ -54,13 +54,14 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:-apple-sy
 #splash.light-splash .s-title em{color:var(--accent)}
 #splash.light-splash .s-quote-main{color:rgba(0,0,0,0.5)}
 #splash.light-splash .s-quote-main strong{color:rgba(0,0,0,0.8)}
-#splash.light-splash .s-daily{color:rgba(0,0,0,0.3);border-top-color:rgba(0,0,0,0.08);}
+#splash.light-splash .s-daily{color:rgba(0,0,0,0.45);border-top-color:rgba(0,0,0,0.1);}
+#splash.light-splash .s-daily span{color:rgba(0,0,0,0.55);font-weight:700;}
 #splash.light-splash .s-footer{color:rgba(0,0,0,0.15)}
 #splash.light-splash .s-bar{background:var(--accent)}
 #splash.light-splash .s-glow-a{background:radial-gradient(circle,rgba(0,200,150,0.15) 0%,transparent 70%)}
 #splash.light-splash .s-glow-b{background:radial-gradient(circle,rgba(59,143,232,0.1) 0%,transparent 70%)}
 #splash.light-splash .s-streak-lbl{color:var(--gold)}
-#splash.light-splash #splash-theme-btn{background:rgba(0,0,0,0.06);border-color:rgba(0,0,0,0.1);color:rgba(0,0,0,0.4);}
+#splash.light-splash #splash-theme-btn{background:rgba(0,0,0,0.08);border-color:rgba(0,0,0,0.18);color:rgba(0,0,0,0.65);box-shadow:0 2px 10px rgba(0,0,0,0.08);}
 #splash.light-splash .s-trophy{filter:none}
 #splash.hide{opacity:0;transform:scale(1.04);pointer-events:none}
 .s-glow-a{position:absolute;width:500px;height:500px;border-radius:50%;background:radial-gradient(circle,rgba(0,200,150,0.2) 0%,transparent 70%);top:-80px;left:-60px;animation:gpulse 5s ease-in-out infinite}
@@ -77,7 +78,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:-apple-sy
 .s-quote-main{position:relative;font-size:16px;line-height:1.65;color:rgba(255,255,255,0.5);text-align:center;max-width:270px;margin-bottom:14px;font-style:italic;animation:fadeUp .5s ease .3s both}
 .s-quote-main strong{color:rgba(255,255,255,0.85);font-style:normal}
 .s-daily{position:relative;font-size:13px;line-height:1.6;color:rgba(255,255,255,0.35);text-align:center;max-width:270px;margin-bottom:44px;font-style:italic;border-top:1px solid rgba(255,255,255,0.08);padding-top:13px;animation:fadeUp .5s ease .4s both}
-.s-daily span{display:block;font-size:10px;color:rgba(255,255,255,0.2);margin-top:5px;font-style:normal;letter-spacing:1px}
+.s-daily span{display:block;font-size:11px;color:rgba(255,255,255,0.35);margin-top:6px;font-style:normal;letter-spacing:0.5px;font-weight:600}
 .s-cta{position:relative;background:var(--accent);color:#fff;border:none;padding:15px 46px;border-radius:50px;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 8px 32px rgba(0,200,150,0.45);animation:fadeUp .5s ease .5s both;transition:transform .1s}
 .s-cta:active{transform:scale(0.95)}
 .s-footer{position:absolute;bottom:calc(22px + var(--sb));font-size:10px;color:rgba(255,255,255,0.12);letter-spacing:2px;text-transform:uppercase;animation:fadeUp .5s ease .65s both}
@@ -246,8 +247,8 @@ self.addEventListener('fetch',e=>e.respondWith(caches.match(e.request).then(r=>r
   <div class="s-daily"><div id="splash-quote-text">...</div><span id="splash-quote-author"></span></div>
   <button class="s-cta" onclick="closeSplash()">On y va 💪</button>
   <div class="s-footer">Your gains. Your rules.</div>
-  <button onclick="cycleTheme();updateSplashThemeBtn()" id="splash-theme-btn" style="position:absolute;top:calc(18px + var(--st));right:18px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:20px;padding:6px 12px;color:rgba(255,255,255,0.5);font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;backdrop-filter:blur(8px);transition:all .2s;">
-    <span id="splash-theme-icon">🌙</span><span id="splash-theme-txt">Sombre</span>
+  <button onclick="cycleTheme();updateSplashThemeBtn()" id="splash-theme-btn" style="position:absolute;top:calc(20px + var(--st));right:18px;background:rgba(255,255,255,0.14);border:1.5px solid rgba(255,255,255,0.22);border-radius:22px;padding:8px 14px;color:rgba(255,255,255,0.75);font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);transition:all .25s;letter-spacing:0.2px;box-shadow:0 2px 12px rgba(0,0,0,0.15);">
+    <span id="splash-theme-icon" style="font-size:14px;">🌙</span><span id="splash-theme-txt">Mode sombre</span>
   </button>
 </div>
 
@@ -949,6 +950,16 @@ function finishWorkout(){
     sets:e.sets.filter(s=>s.done).map(s=>({reps:s.reps,kg:s.kg}))
   })).filter(e=>e.sets.length>0);
   if(!exs.length){if(!confirm('Aucune série validée. Quitter quand même ?'))return;goBackToSeances();return;}
+  // Check if any exercise has fewer sets done than targetSets
+  const incomplete=woSession.exercises.filter(e=>{
+    const done=e.sets.filter(s=>s.done).length;
+    return done>0 && done<e.targetSets;
+  });
+  if(incomplete.length>0){
+    const names=incomplete.map(e=>`${e.name} (${e.sets.filter(s=>s.done).length}/${e.targetSets} séries)`).join(', ');
+    const cont=confirm(`Il te reste des séries sur : ${names}\n\nTu peux continuer ou terminer quand même — ton template restera à ${incomplete[0].targetSets} séries pour la prochaine fois.`);
+    if(!cont)return;
+  }
   const existing=st.seances.find(s=>s.type===woSession.type);
   const prevExs=existing?existing.exs:null;
   if(existing){
@@ -958,14 +969,19 @@ function finishWorkout(){
     if(existing.date===todayStr){
       // Same day: just update exs, don't push to history
       existing.exs=exs;
+      // Update templates if new exercises were added during session
+      if(!existing.templates)existing.templates=exs.map(e=>({name:e.name,muscle:e.muscle,targetSets:e.sets.length}));
+      woSession.exercises.forEach(e=>{if(!existing.templates.find(t=>t.name===e.name)){existing.templates.push({name:e.name,muscle:e.muscle,targetSets:e.targetSets});}});
     } else {
       // Different day: push previous to history, update current
       existing.history.push({date:existing.date,exs:existing.exs});
       if(existing.history.length>30)existing.history=existing.history.slice(-30);
       existing.date=todayStr;existing.exs=exs;
+      if(!existing.templates)existing.templates=exs.map(e=>({name:e.name,muscle:e.muscle,targetSets:e.sets.length}));
+      woSession.exercises.forEach(e=>{if(!existing.templates.find(t=>t.name===e.name)){existing.templates.push({name:e.name,muscle:e.muscle,targetSets:e.targetSets});}});
     }
   } else {
-    st.seances.push({id:Date.now(),date:today(),type:woSession.type,exs,history:[]});
+    st.seances.push({id:Date.now(),date:today(),type:woSession.type,exs,history:[],templates:woSession.exercises.map(e=>({name:e.name,muscle:e.muscle,targetSets:e.targetSets}))});
   }
   saveState(st);
   showDebrief(exs, prevExs, st);
@@ -1225,11 +1241,13 @@ function delSeance(i){if(!confirm('Supprimer ?'))return;const st=getState();st.s
 
 function repeatSeance(i){
   const st=getState();const s=st.seances[i];
+  // Use saved templates (original targetSets) — not actual sets done last time
+  const templates=s.templates||s.exs.map(e=>({name:e.name,muscle:e.muscle,targetSets:Math.max(e.sets.length,3)}));
   woSession={
     type:s.type,
-    exercises: s.exs.map(e=>({
-      name:e.name, muscle:e.muscle, targetSets:e.sets.length,
-      sets: Array.from({length:e.sets.length},(_,si)=>({reps:null,kg:null,done:false,idx:si}))
+    exercises: templates.map(t=>({
+      name:t.name, muscle:t.muscle, targetSets:t.targetSets,
+      sets: Array.from({length:t.targetSets},(_,si)=>({reps:null,kg:null,done:false,idx:si}))
     }))
   };
   document.getElementById('wo-type').textContent=s.type;
@@ -1317,8 +1335,8 @@ function updateSplashThemeBtn(){
   const icon=document.getElementById('splash-theme-icon');
   const txt=document.getElementById('splash-theme-txt');
   if(!icon)return;
-  if(mode==='dark'){icon.textContent='☀️';txt.textContent='Clair';}
-  else{icon.textContent='🌙';txt.textContent='Sombre';}
+  if(mode==='dark'){icon.textContent='☀️';txt.textContent='Mode clair';}
+  else{icon.textContent='🌙';txt.textContent='Mode sombre';}
 }
 
 // ============================================================
