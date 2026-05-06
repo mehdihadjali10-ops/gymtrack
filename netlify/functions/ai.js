@@ -4,16 +4,15 @@ exports.handler = async function(event) {
   }
 
   const GEMINI_KEY = 'AIzaSyBwVdZ_oVPOxSRII3DuSgUL24Hn14jHXmI';
-  const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + GEMINI_KEY;
+  const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + GEMINI_KEY;
 
   try {
     const payload = JSON.parse(event.body);
-    const { system_instruction, contents, generationConfig } = payload;
+    const { contents } = payload;
 
     const geminiBody = {
-      system_instruction: system_instruction,
       contents: contents,
-      generationConfig: generationConfig || { maxOutputTokens: 1000, temperature: 0.7 }
+      generationConfig: { maxOutputTokens: 1000, temperature: 0.7 }
     };
 
     const response = await fetch(GEMINI_URL, {
