@@ -963,20 +963,27 @@ function finishWorkout(){
   doFinishWorkout(exs);
 }
 
+let _incompleteCallback=null;
 function showIncompletePopup(namesHtml, onConfirm){
+  _incompleteCallback=onConfirm;
   const el=document.createElement('div');
-  el.style.cssText='position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.6);display:flex;align-items:flex-end;animation:fadeIn .2s ease;';
+  el.id='incomplete-popup';
+  el.style.cssText='position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.6);display:flex;align-items:flex-end;';
   el.innerHTML=`
     <div style="background:var(--card);border-radius:22px 22px 0 0;width:100%;padding:24px 22px calc(24px + var(--sb));box-shadow:0 -8px 40px rgba(0,0,0,0.2);" onclick="event.stopPropagation()">
       <div style="width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 20px;"></div>
-      <div style="font-size:22px;margin-bottom:10px;text-align:center;">⚠️</div>
+      <div style="font-size:28px;margin-bottom:10px;text-align:center;">⚠️</div>
       <div style="font-size:18px;font-weight:800;text-align:center;margin-bottom:10px;">Séance incomplète</div>
-      <div style="font-size:14px;color:var(--text2);text-align:center;line-height:1.6;margin-bottom:20px;">Il te reste des séries sur ${namesHtml}.<br><br>Ton template sera conservé pour la prochaine fois.</div>
-      <button onclick="this.closest('[style*=fixed]').remove();${onConfirm.toString().replace(/"/g,"'")}()" style="width:100%;padding:15px;background:var(--accent);border:none;border-radius:14px;color:#fff;font-size:16px;font-weight:800;cursor:pointer;margin-bottom:10px;box-shadow:0 4px 16px rgba(0,200,150,0.3);">Terminer quand même</button>
-      <button onclick="this.closest('[style*=fixed]').remove()" style="width:100%;padding:13px;background:var(--bg);border:1px solid var(--border);border-radius:14px;color:var(--text2);font-size:15px;font-weight:600;cursor:pointer;">Continuer la séance</button>
+      <div style="font-size:14px;color:var(--text2);text-align:center;line-height:1.6;margin-bottom:22px;">Il te reste des séries sur ${namesHtml}.<br><br>Ton template sera conservé pour la prochaine fois.</div>
+      <button onclick="confirmIncomplete()" style="width:100%;padding:15px;background:var(--accent);border:none;border-radius:14px;color:#fff;font-size:16px;font-weight:800;cursor:pointer;margin-bottom:10px;box-shadow:0 4px 16px rgba(0,200,150,0.3);">Terminer quand même</button>
+      <button onclick="document.getElementById('incomplete-popup').remove()" style="width:100%;padding:13px;background:var(--bg);border:1px solid var(--border);border-radius:14px;color:var(--text2);font-size:15px;font-weight:600;cursor:pointer;">Continuer la séance</button>
     </div>`;
   document.body.appendChild(el);
-  void(0);}
+}
+function confirmIncomplete(){
+  document.getElementById('incomplete-popup')?.remove();
+  if(_incompleteCallback){_incompleteCallback();_incompleteCallback=null;}
+}
 
 function doFinishWorkout(exs){
   const st2=getState();
@@ -987,20 +994,12 @@ function doFinishWorkout(exs){
     if(!existing.history)existing.history=[];
     // Fix: if same day, replace today's entry instead of adding to history
     const todayStr=today();
-    if(existing.date===todayStr){
-      // Same day: just update exs, don't push to history
-      existing.exs=exs;
-      // Update templates if new exercises were added during session
-      if(!existing.templates)existing.templates=exs.map(e=>({name:e.name,muscle:e.muscle,targetSets:e.sets.length}));
-      woSession.exercises.forEach(e=>{if(!existing.templates.find(t=>t.name===e.name)){existing.templates.push({name:e.name,muscle:e.muscle,targetSets:e.targetSets});}});
-    } else {
-      // Different day: push previous to history, update current
-      existing.history.push({date:existing.date,exs:existing.exs});
-      if(existing.history.length>30)existing.history=existing.history.slice(-30);
-      existing.date=todayStr;existing.exs=exs;
-      if(!existing.templates)existing.templates=exs.map(e=>({name:e.name,muscle:e.muscle,targetSets:e.sets.length}));
-      woSession.exercises.forEach(e=>{if(!existing.templates.find(t=>t.name===e.name)){existing.templates.push({name:e.name,muscle:e.muscle,targetSets:e.targetSets});}});
-    }
+    // Always push previous to history (even same day = second session)
+    existing.history.push({date:existing.date,exs:existing.exs});
+    if(existing.history.length>30)existing.history=existing.history.slice(-30);
+    existing.date=todayStr;existing.exs=exs;
+    if(!existing.templates)existing.templates=exs.map(e=>({name:e.name,muscle:e.muscle,targetSets:e.sets.length}));
+    woSession.exercises.forEach(e=>{if(!existing.templates.find(t=>t.name===e.name)){existing.templates.push({name:e.name,muscle:e.muscle,targetSets:e.targetSets});}});
   } else {
     st.seances.push({id:Date.now(),date:today(),type:woSession.type,exs,history:[],templates:woSession.exercises.map(e=>({name:e.name,muscle:e.muscle,targetSets:e.targetSets}))});
   }
