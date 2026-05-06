@@ -1905,7 +1905,7 @@ function restoreFromText(){
     const current=getState();
     data.photos=current.photos||[];
     localStorage.setItem('gymtrack_v4',JSON.stringify(data));
-    alert('✅ Données restaurées ! L'app va se recharger.');
+    alert('✅ Données restaurées ! L\'app va se recharger.');
     location.reload();
   }catch(e){
     alert('Code invalide ou corrompu. Vérifie que tu as tout copié.');
