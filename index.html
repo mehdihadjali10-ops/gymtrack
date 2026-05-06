@@ -216,21 +216,7 @@ select option{background:var(--card);color:var(--text)}
 .empty-icon{font-size:44px;margin-bottom:10px}.empty-title{font-size:17px;font-weight:700;color:var(--text2);margin-bottom:5px}
 </style>
 
-<script>
-// Register service worker for offline support
-if('serviceWorker' in navigator){
-  const swCode=`
-const CACHE='gymtrack-v2';
-const ASSETS=['/'];
-self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
-self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
-self.addEventListener('fetch',e=>e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{if(res.ok&&e.request.url.startsWith(self.location.origin)){const clone=res.clone();caches.open(CACHE).then(c=>c.put(e.request,clone));}return res;}).catch(()=>caches.match('/')))));
-  `;
-  const blob=new Blob([swCode],{type:'application/javascript'});
-  const swUrl=URL.createObjectURL(blob);
-  navigator.serviceWorker.register(swUrl).catch(()=>{});
-}
-</script>
+<!-- offline support removed -->
 </head>
 <body>
 
@@ -1951,6 +1937,10 @@ function recoverStreak(){
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+  // Unregister any old service workers that might be caching wrong versions
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.getRegistrations().then(regs=>{regs.forEach(r=>r.unregister());});
+  }
   initTheme();
   renderDailyQuote();
   renderSplashStreak();
