@@ -7,6 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="GymTrack">
 <meta name="theme-color" content="#0a0a0a">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; connect-src 'self' https://api.anthropic.com https://cdnjs.cloudflare.com; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; img-src 'self' data: blob:;">
 <title>GymTrack</title>
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%231D9E75'/%3E%3Ctext x='90' y='125' text-anchor='middle' font-size='90' font-family='system-ui'%3E%F0%9F%92%AA%3C/text%3E%3C/svg%3E">
 <style>
@@ -532,6 +533,7 @@ self.addEventListener('fetch',e=>e.respondWith(caches.match(e.request).then(r=>r
 
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 // ============================================================
 // CONSTANTS
@@ -562,6 +564,12 @@ const DAILY_QUOTES=[
 function loadState(){try{return JSON.parse(localStorage.getItem('gymtrack_v4'))||{};}catch(e){return{};}}
 function getState(){
   const s=loadState();
+  // Try to recover streak if missing or count is 0 but we have a backup
+  let streak=s.streak||{count:0,last:''};
+  if(streak.count===0){
+    const recovered=recoverStreak();
+    if(recovered&&recovered.count>0)streak=recovered;
+  }
   return{
     seances:s.seances||[],
     muscles:s.muscles||[...DEFAULT_MUSCLES],
@@ -572,7 +580,7 @@ function getState(){
     mensurations:s.mensurations||{},
     photos:s.photos||[],
     profile:s.profile||{},
-    streak:s.streak||{count:0,last:''},
+    streak,
     aiHistory:s.aiHistory||[],
   };
 }
@@ -587,7 +595,7 @@ function updateStreak(){
   if(sk.last===t)return sk;
   const y=new Date();y.setDate(y.getDate()-1);const ys=y.toISOString().slice(0,10);
   sk.count=(sk.last===ys)?sk.count+1:1;
-  sk.last=t;saveState(st);return sk;
+  sk.last=t;saveState(st);saveStreakResilient(sk);return sk;
 }
 function renderSplashStreak(){
   const sk=updateStreak();
@@ -859,19 +867,19 @@ function showSetInput(ei,si,defReps,defKg,lastReps,lastKg){
       <div style="display:flex;gap:16px;margin-bottom:20px;">
         <div style="flex:1;text-align:center;">
           <div style="font-size:11px;color:var(--text2);margin-bottom:8px;font-weight:700;letter-spacing:1px;">RÉPÉTITIONS</div>
-          <div style="display:flex;align-items:center;justify-content:center;gap:12px;">
-            <button onclick="woInputAdj('reps',-1)" style="width:44px;height:44px;border-radius:50%;background:var(--bg);border:1px solid var(--border);font-size:22px;cursor:pointer;">−</button>
-            <span id="wo-inp-reps" style="font-size:48px;font-weight:800;min-width:60px;text-align:center;line-height:1;">${defReps}</span>
-            <button onclick="woInputAdj('reps',1)" style="width:44px;height:44px;border-radius:50%;background:var(--bg);border:1px solid var(--border);font-size:22px;cursor:pointer;">+</button>
+          <div style="display:flex;align-items:center;justify-content:center;gap:8px;">
+            <button onclick="woInputAdj('reps',-1)" style="width:40px;height:40px;border-radius:50%;background:var(--bg);border:1px solid var(--border);font-size:20px;cursor:pointer;flex-shrink:0;">−</button>
+            <span id="wo-inp-reps" style="font-size:42px;font-weight:800;min-width:52px;max-width:70px;text-align:center;line-height:1;">${defReps}</span>
+            <button onclick="woInputAdj('reps',1)" style="width:40px;height:40px;border-radius:50%;background:var(--bg);border:1px solid var(--border);font-size:20px;cursor:pointer;flex-shrink:0;">+</button>
           </div>
         </div>
         <div style="width:1px;background:var(--border);"></div>
         <div style="flex:1;text-align:center;">
           <div style="font-size:11px;color:var(--text2);margin-bottom:8px;font-weight:700;letter-spacing:1px;">CHARGE kg</div>
-          <div style="display:flex;align-items:center;justify-content:center;gap:12px;">
-            <button onclick="woInputAdj('kg',-2.5)" style="width:44px;height:44px;border-radius:50%;background:var(--bg);border:1px solid var(--border);font-size:22px;cursor:pointer;">−</button>
-            <span id="wo-inp-kg" style="font-size:48px;font-weight:800;min-width:60px;text-align:center;line-height:1;color:var(--accent);">${defKg%1===0?defKg:defKg.toFixed(1)}</span>
-            <button onclick="woInputAdj('kg',2.5)" style="width:44px;height:44px;border-radius:50%;background:var(--bg);border:1px solid var(--border);font-size:22px;cursor:pointer;">+</button>
+          <div style="display:flex;align-items:center;justify-content:center;gap:8px;">
+            <button onclick="woInputAdj('kg',-2.5)" style="width:40px;height:40px;border-radius:50%;background:var(--bg);border:1px solid var(--border);font-size:20px;cursor:pointer;flex-shrink:0;">−</button>
+            <span id="wo-inp-kg" style="font-size:42px;font-weight:800;min-width:52px;max-width:80px;text-align:center;line-height:1;color:var(--accent);">${defKg%1===0?defKg:defKg.toFixed(1)}</span>
+            <button onclick="woInputAdj('kg',2.5)" style="width:40px;height:40px;border-radius:50%;background:var(--bg);border:1px solid var(--border);font-size:20px;cursor:pointer;flex-shrink:0;">+</button>
           </div>
         </div>
       </div>
@@ -1839,7 +1847,8 @@ async function callAI(st,imageData,userPrompt,isPhoto=false){
       body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:1024,system:systemMsg,messages})
     });
     const data=await resp.json();
-    const reply=data.content&&data.content[0]?data.content[0].text:'Désolé, je n\'ai pas pu répondre.';
+    let reply;
+    if(data.content&&data.content[0]&&data.content[0].text){reply=data.content[0].text;}else if(data.error){reply='⚠️ '+data.error.message+' ('+data.error.type+')';}else{reply='⚠️ Réponse inattendue : '+JSON.stringify(data).slice(0,200);}
     loadingDiv.classList.remove('loading');loadingDiv.innerHTML=reply.replace(/\n/g,'<br>');
     document.getElementById('ai-messages').scrollTop=document.getElementById('ai-messages').scrollHeight;
     aiConversation.push({role:'assistant',content:reply});
@@ -1852,6 +1861,93 @@ async function callAI(st,imageData,userPrompt,isPhoto=false){
 // ============================================================
 // INIT
 // ============================================================
+
+// ============================================================
+// BACKUP & RESTORE
+// ============================================================
+function generateBackupQR(){
+  const st=getState();
+  // Remove photos from backup (too large for QR) - save separately
+  const backupData={...st, photos:[]};
+  const json=JSON.stringify(backupData);
+  const encoded=btoa(unescape(encodeURIComponent(json)));
+  
+  const wrap=document.getElementById('backup-qr-wrap');
+  const qrDiv=document.getElementById('backup-qr');
+  qrDiv.innerHTML='';
+  wrap.style.display='block';
+  document.getElementById('restore-input-wrap').style.display='none';
+  
+  // If data too large for QR, show text instead
+  if(encoded.length>2900){
+    qrDiv.innerHTML='';
+    wrap.innerHTML=`<div style="font-size:12px;color:var(--text2);margin-bottom:10px;">Données trop volumineuses pour un QR code.<br>Copie ce code et conserve-le :</div>
+    <textarea style="width:100%;height:80px;font-size:10px;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-family:monospace;" readonly>${encoded}</textarea>
+    <button onclick="navigator.clipboard.writeText('${encoded}').then(()=>alert('Copié !'))" class="btn btn-g btn-full" style="margin-top:8px;">📋 Copier</button>`;
+    return;
+  }
+  
+  try{
+    new QRCode(qrDiv,{
+      text:'GYMTRACK:'+encoded,
+      width:220,height:220,
+      colorDark:'#000000',colorLight:'#ffffff',
+      correctLevel:QRCode.CorrectLevel.M
+    });
+  }catch(e){
+    qrDiv.innerHTML='<div style="font-size:12px;color:var(--danger);">Erreur génération QR</div>';
+  }
+}
+
+function startQRScan(){
+  document.getElementById('backup-qr-wrap').style.display='none';
+  const wrap=document.getElementById('restore-input-wrap');
+  wrap.style.display='block';
+}
+
+function restoreFromText(){
+  const input=document.getElementById('restore-input').value.trim();
+  if(!input){alert('Colle un code de backup.');return;}
+  try{
+    const encoded=input.startsWith('GYMTRACK:')?input.slice(9):input;
+    const json=decodeURIComponent(escape(atob(encoded)));
+    const data=JSON.parse(json);
+    if(!data.seances&&!data.streak){alert('Code invalide.');return;}
+    // Merge: keep existing photos, restore everything else
+    const current=getState();
+    data.photos=current.photos||[];
+    localStorage.setItem('gymtrack_v4',JSON.stringify(data));
+    alert('✅ Données restaurées ! L'app va se recharger.');
+    location.reload();
+  }catch(e){
+    alert('Code invalide ou corrompu. Vérifie que tu as tout copié.');
+  }
+}
+
+// Auto-backup streak to a separate key for resilience
+function saveStreakResilient(streak){
+  try{
+    // Save streak in multiple keys for redundancy
+    localStorage.setItem('gymtrack_streak_backup', JSON.stringify({...streak, savedAt: Date.now()}));
+    sessionStorage.setItem('gymtrack_streak_session', JSON.stringify(streak));
+  }catch(e){}
+}
+
+function recoverStreak(){
+  // Try to recover streak if main state is missing it
+  try{
+    const backup=localStorage.getItem('gymtrack_streak_backup');
+    if(backup){
+      const sk=JSON.parse(backup);
+      // Only recover if backup is recent (less than 7 days old)
+      if(Date.now()-sk.savedAt < 7*24*60*60*1000){
+        return {count:sk.count, last:sk.last};
+      }
+    }
+  }catch(e){}
+  return null;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
   initTheme();
   renderDailyQuote();
