@@ -822,57 +822,66 @@ function renderWorkoutScreen(){
 function woTapSet(ei,si){
   const ex=woSession.exercises[ei];
   const s=ex.sets[si];
-  if(s.done){
-    s.done=false;s.reps=null;s.kg=null;
-    renderWorkoutScreen();return;
-  }
   const lastPerf=getLastPerf(ex.name);
   const lastSet=lastPerf&&lastPerf[si]?lastPerf[si]:null;
-  // Use last done set in current session as default if available, else last perf
   const prevDone=ex.sets.slice(0,si).filter(s=>s.done).slice(-1)[0];
-  const defReps=s.reps!==null?s.reps:prevDone?prevDone.reps:(lastSet?lastSet.reps:10);
-  const defKg=s.kg!==null?s.kg:prevDone?prevDone.kg:(lastSet?lastSet.kg:0);
+  // If done: use actual saved values as defaults (for editing)
+  const defReps=s.done?s.reps:(s.reps!==null?s.reps:prevDone?prevDone.reps:(lastSet?lastSet.reps:10));
+  const defKg=s.done?s.kg:(s.kg!==null?s.kg:prevDone?prevDone.kg:(lastSet?lastSet.kg:0));
   const lastReps=lastSet?lastSet.reps:null;
   const lastKg=lastSet?lastSet.kg:null;
-  showSetInput(ei,si,defReps,defKg,lastReps,lastKg);
+  // Always open input (done or not) - editing is always allowed
+  showSetInput(ei,si,defReps,defKg,lastReps,lastKg,s.done);
 }
 
-function showSetInput(ei,si,defReps,defKg,lastReps,lastKg){
+function showSetInput(ei,si,defReps,defKg,lastReps,lastKg,isEdit){
   const old=document.getElementById('wo-input-overlay');if(old)old.remove();
   const overlay=document.createElement('div');
   overlay.id='wo-input-overlay';
   overlay.style.cssText='position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.7);display:flex;align-items:flex-end;';
   const est1RM=(lastReps!=null&&lastKg!=null)?calc1RM(lastKg,lastReps):null;
   const hyp=est1RM?getHypertrophySuggestion(est1RM):null;
-  const suggHtml=hyp?`<div style="display:flex;gap:8px;margin-bottom:12px;"><div style="flex:1;background:rgba(255,179,64,0.1);border:1px solid rgba(255,179,64,0.2);border-radius:10px;padding:8px;text-align:center;"><div style="font-size:10px;font-weight:700;color:var(--gold);letter-spacing:0.5px;">1RM EST.</div><div style="font-size:17px;font-weight:800;">${est1RM}kg</div></div><div style="flex:1;background:var(--blue-bg);border:1px solid rgba(59,143,232,0.2);border-radius:10px;padding:8px;text-align:center;"><div style="font-size:10px;font-weight:700;color:var(--blue);letter-spacing:0.5px;">HYPERTROPHIE</div><div style="font-size:17px;font-weight:800;">${hyp.low}–${hyp.high}kg</div></div></div>`:'';
-  const refHtml=lastReps!=null?`<div style="text-align:center;margin-bottom:10px;padding:8px 16px;background:var(--bg);border-radius:10px;font-size:13px;color:var(--text2);">Dernière fois : <strong style="color:var(--text)">${lastReps}×${lastKg}kg</strong></div>`:'';
+  const suggHtml=hyp?`<div style="display:flex;gap:8px;margin-bottom:10px;"><div style="flex:1;background:rgba(255,179,64,0.1);border:1px solid rgba(255,179,64,0.2);border-radius:10px;padding:8px;text-align:center;"><div style="font-size:10px;font-weight:700;color:var(--gold);letter-spacing:0.5px;">1RM EST.</div><div style="font-size:17px;font-weight:800;">${est1RM}kg</div></div><div style="flex:1;background:var(--blue-bg);border:1px solid rgba(59,143,232,0.2);border-radius:10px;padding:8px;text-align:center;"><div style="font-size:10px;font-weight:700;color:var(--blue);letter-spacing:0.5px;">HYPERTROPHIE</div><div style="font-size:17px;font-weight:800;">${hyp.low}–${hyp.high}kg</div></div></div>`:'';
+  const refHtml=lastReps!=null?`<div style="text-align:center;margin-bottom:8px;padding:7px 14px;background:var(--bg);border-radius:10px;font-size:13px;color:var(--text2);">Dernière fois : <strong style="color:var(--text)">${lastReps}×${lastKg}kg</strong></div>`:'';
+  const muscles=getMuscles();
+  const currentMuscle=woSession.exercises[ei].muscle;
+  const muscleSelectHtml=isEdit?`<div style="margin-bottom:12px;"><div style="font-size:11px;color:var(--text2);margin-bottom:6px;font-weight:700;letter-spacing:1px;">GROUPE MUSCULAIRE</div><select id="wo-inp-muscle" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;background:var(--bg);color:var(--text);appearance:none;-webkit-appearance:none;">${muscles.map(m=>`<option value="${m}"${m===currentMuscle?' selected':''}>${m}</option>`).join('')}</select></div>`:'';
+  const editBadge=isEdit?'<div style="text-align:center;margin-bottom:8px;"><span style="background:var(--blue-bg);color:var(--blue);font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;letter-spacing:0.5px;">✏️ MODIFICATION</span></div>':'';
   overlay.innerHTML=`
     <div style="background:var(--card);border-radius:20px 20px 0 0;width:100%;padding:20px 20px calc(20px + var(--sb));">
-      <div style="width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 16px;"></div>
-      <div style="font-size:16px;font-weight:700;margin-bottom:12px;text-align:center;">Série ${si+1} — ${woSession.exercises[ei].name}</div>
+      <div style="width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 14px;"></div>
+      ${editBadge}
+      <div style="font-size:16px;font-weight:700;margin-bottom:10px;text-align:center;">Série ${si+1} — ${woSession.exercises[ei].name}</div>
       ${refHtml}
       ${suggHtml}
-      <div style="display:flex;gap:16px;margin-bottom:20px;">
+      ${muscleSelectHtml}
+      <div style="display:flex;gap:12px;margin-bottom:18px;">
         <div style="flex:1;text-align:center;">
-          <div style="font-size:11px;color:var(--text2);margin-bottom:8px;font-weight:700;letter-spacing:1px;">RÉPÉTITIONS</div>
-          <div style="display:flex;align-items:center;justify-content:center;gap:8px;">
-            <button onclick="woInputAdj('reps',-1)" style="width:40px;height:40px;border-radius:50%;background:var(--bg);border:1px solid var(--border);font-size:20px;cursor:pointer;flex-shrink:0;">−</button>
-            <span id="wo-inp-reps" style="font-size:42px;font-weight:800;min-width:52px;max-width:70px;text-align:center;line-height:1;">${defReps}</span>
-            <button onclick="woInputAdj('reps',1)" style="width:40px;height:40px;border-radius:50%;background:var(--bg);border:1px solid var(--border);font-size:20px;cursor:pointer;flex-shrink:0;">+</button>
+          <div style="font-size:11px;color:var(--text2);margin-bottom:6px;font-weight:700;letter-spacing:1px;">RÉPÉTITIONS</div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:6px;">
+            <button onclick="woInputAdj('reps',-1)" style="width:38px;height:38px;border-radius:50%;background:var(--bg);border:1px solid var(--border);font-size:20px;cursor:pointer;flex-shrink:0;">−</button>
+            <input id="wo-inp-reps" type="number" inputmode="numeric" min="1"
+              value="${defReps}"
+              style="font-size:38px;font-weight:800;width:64px;text-align:center;border:none;background:transparent;color:var(--text);outline:none;padding:0;"
+              oninput="document.getElementById('wo-input-overlay').dataset.reps=this.value||1">
+            <button onclick="woInputAdj('reps',1)" style="width:38px;height:38px;border-radius:50%;background:var(--bg);border:1px solid var(--border);font-size:20px;cursor:pointer;flex-shrink:0;">+</button>
           </div>
         </div>
         <div style="width:1px;background:var(--border);"></div>
         <div style="flex:1;text-align:center;">
-          <div style="font-size:11px;color:var(--text2);margin-bottom:8px;font-weight:700;letter-spacing:1px;">CHARGE kg</div>
-          <div style="display:flex;align-items:center;justify-content:center;gap:8px;">
-            <button onclick="woInputAdj('kg',-2.5)" style="width:40px;height:40px;border-radius:50%;background:var(--bg);border:1px solid var(--border);font-size:20px;cursor:pointer;flex-shrink:0;">−</button>
-            <span id="wo-inp-kg" style="font-size:42px;font-weight:800;min-width:52px;max-width:80px;text-align:center;line-height:1;color:var(--accent);">${defKg%1===0?defKg:defKg.toFixed(1)}</span>
-            <button onclick="woInputAdj('kg',2.5)" style="width:40px;height:40px;border-radius:50%;background:var(--bg);border:1px solid var(--border);font-size:20px;cursor:pointer;flex-shrink:0;">+</button>
+          <div style="font-size:11px;color:var(--text2);margin-bottom:6px;font-weight:700;letter-spacing:1px;">CHARGE kg</div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:6px;">
+            <button onclick="woInputAdj('kg',-2.5)" style="width:38px;height:38px;border-radius:50%;background:var(--bg);border:1px solid var(--border);font-size:20px;cursor:pointer;flex-shrink:0;">−</button>
+            <input id="wo-inp-kg" type="number" inputmode="decimal" min="0" step="0.5"
+              value="${defKg}"
+              style="font-size:38px;font-weight:800;width:72px;text-align:center;border:none;background:transparent;color:var(--accent);outline:none;padding:0;"
+              oninput="document.getElementById('wo-input-overlay').dataset.kg=this.value||0">
+            <button onclick="woInputAdj('kg',2.5)" style="width:38px;height:38px;border-radius:50%;background:var(--bg);border:1px solid var(--border);font-size:20px;cursor:pointer;flex-shrink:0;">+</button>
           </div>
         </div>
       </div>
-      <button onclick="woConfirmSet(${ei},${si})" style="width:100%;padding:16px;background:var(--accent);border:none;border-radius:14px;color:#fff;font-size:17px;font-weight:800;cursor:pointer;box-shadow:0 4px 16px rgba(0,200,150,0.4);">✓ Valider</button>
-      <button onclick="document.getElementById('wo-input-overlay').remove()" style="width:100%;padding:11px;background:none;border:none;color:var(--text3);font-size:14px;cursor:pointer;margin-top:4px;">Annuler</button>
+      <button onclick="woConfirmSet(${ei},${si})" style="width:100%;padding:15px;background:var(--accent);border:none;border-radius:14px;color:#fff;font-size:17px;font-weight:800;cursor:pointer;box-shadow:0 4px 16px rgba(0,200,150,0.4);">✓ ${isEdit?'Modifier':'Valider'}</button>
+      <button onclick="document.getElementById('wo-input-overlay').remove()" style="width:100%;padding:11px;background:none;border:none;color:var(--text3);font-size:14px;cursor:pointer;margin-top:2px;">Annuler</button>
     </div>`;
   overlay.querySelector('div').addEventListener('click',e=>e.stopPropagation());
   overlay.addEventListener('click',()=>overlay.remove());
@@ -885,21 +894,30 @@ function woInputAdj(type,delta){
   const overlay=document.getElementById('wo-input-overlay');
   if(!overlay)return;
   if(type==='reps'){
-    overlay.dataset.reps=Math.max(1,parseInt(overlay.dataset.reps)+delta);
-    document.getElementById('wo-inp-reps').textContent=overlay.dataset.reps;
+    const cur=parseInt(document.getElementById('wo-inp-reps').value)||1;
+    const next=Math.max(1,cur+delta);
+    overlay.dataset.reps=next;
+    document.getElementById('wo-inp-reps').value=next;
   } else {
-    const v=Math.max(0,Math.round((parseFloat(overlay.dataset.kg)+delta)*10)/10);
-    overlay.dataset.kg=v;
-    document.getElementById('wo-inp-kg').textContent=v%1===0?v:v.toFixed(1);
+    const cur=parseFloat(document.getElementById('wo-inp-kg').value)||0;
+    const next=Math.max(0,Math.round((cur+delta)*10)/10);
+    overlay.dataset.kg=next;
+    document.getElementById('wo-inp-kg').value=next;
   }
 }
 
 function woConfirmSet(ei,si){
   const overlay=document.getElementById('wo-input-overlay');
-  const reps=parseInt(overlay.dataset.reps);
-  const kg=parseFloat(overlay.dataset.kg);
+  // Read from inputs directly (user may have typed)
+  const repsInput=document.getElementById('wo-inp-reps');
+  const kgInput=document.getElementById('wo-inp-kg');
+  const reps=Math.max(1,parseInt(repsInput?repsInput.value:overlay.dataset.reps)||1);
+  const kg=Math.max(0,parseFloat(kgInput?kgInput.value:overlay.dataset.kg)||0);
   const lastReps=overlay.dataset.lastReps?parseInt(overlay.dataset.lastReps):null;
   const lastKg=overlay.dataset.lastKg?parseFloat(overlay.dataset.lastKg):null;
+  // Save muscle change if user edited it
+  const muscleSelect=document.getElementById('wo-inp-muscle');
+  if(muscleSelect){woSession.exercises[ei].muscle=muscleSelect.value;}
   overlay.remove();
   woSession.exercises[ei].sets[si].reps=reps;
   woSession.exercises[ei].sets[si].kg=kg;
