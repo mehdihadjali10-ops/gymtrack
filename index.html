@@ -615,7 +615,7 @@ function closeSplash(){
   setTimeout(()=>{
     document.getElementById('splash').style.display='none';
     // If Supabase loaded but no user, show auth
-    if(_sb && !currentUser && !isOfflineMode){
+    if(getSB() && !currentUser && !isOfflineMode){
       showAuthScreen();
     }
   },700);
@@ -2062,17 +2062,31 @@ let syncTimeout = null;
 
 function initSupabase(){
   try{
-    _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    if(window.supabase){
+      _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      console.log('Supabase initialized OK');
+    } else {
+      console.log('window.supabase not available yet');
+      isOfflineMode = true;
+    }
   }catch(e){
-    console.log('Supabase init failed, offline mode');
+    console.log('Supabase init failed:', e.message);
     isOfflineMode = true;
   }
 }
 
+function getSB(){
+  if(_sb) return _sb;
+  if(window.supabase){
+    _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  }
+  return _sb;
+}
+
 async function checkAuth(){
-  if(!_sb){ showApp(); return; }
+  if(!getSB()){ showApp(); return; }
   try{
-    const { data: { session } } = await _sb.auth.getSession();
+    const { data: { session } } = await getSB().auth.getSession();
     if(session){
       currentUser = session.user;
       await loadFromCloud();
@@ -2101,13 +2115,13 @@ function continueOffline(){
   showApp();
 }
 
-let authMode = 'login';
+let authMode = 'signup';
 function toggleAuthMode(){
   authMode = authMode === 'login' ? 'signup' : 'login';
-  document.getElementById('auth-btn').textContent = authMode === 'login' ? 'Se connecter' : "S\'inscrire";
-  document.getElementById('auth-subtitle').textContent = authMode === 'login' ? 'Connecte-toi pour sauvegarder tes données' : 'Crée ton compte gratuit';
-  document.getElementById('auth-toggle-text').textContent = authMode === 'login' ? 'Pas encore de compte ?' : 'Déjà un compte ?';
-  document.getElementById('auth-toggle-btn').textContent = authMode === 'login' ? "S\'inscrire" : 'Se connecter';
+  document.getElementById('auth-btn').textContent = authMode === 'signup' ? "S\'inscrire" : 'Se connecter';
+  document.getElementById('auth-subtitle').textContent = authMode === 'signup' ? 'Crée ton compte gratuit' : 'Connecte-toi pour sauvegarder tes données';
+  document.getElementById('auth-toggle-text').textContent = authMode === 'signup' ? 'Déjà un compte ?' : 'Pas encore de compte ?';
+  document.getElementById('auth-toggle-btn').textContent = authMode === 'signup' ? 'Se connecter' : "S\'inscrire";
   document.getElementById('auth-error').style.display='none';
 }
 
@@ -2124,9 +2138,9 @@ async function authAction(){
   try{
     let result;
     if(authMode === 'login'){
-      result = await _sb.auth.signInWithPassword({ email, password });
+      result = await getSB().auth.signInWithPassword({ email, password });
     } else {
-      result = await _sb.auth.signUp({ email, password });
+      result = await getSB().auth.signUp({ email, password });
     }
     if(result.error){
       showAuthError(translateAuthError(result.error.message) + ' [' + result.error.message + ']');
@@ -2165,12 +2179,12 @@ function translateAuthError(msg){
 }
 
 async function saveToCloud(){
-  if(!_sb || !currentUser || isOfflineMode) return;
+  if(!getSB() || !currentUser || isOfflineMode) return;
   try{
     const st = getState();
     // Remove photos from cloud save (too large)
     const cloudData = {...st, photos: []};
-    await _sb.from('gymdata').upsert({
+    await getSB().from('gymdata').upsert({
       id: currentUser.id,
       data: cloudData,
       updated_at: new Date().toISOString()
@@ -2181,9 +2195,9 @@ async function saveToCloud(){
 }
 
 async function loadFromCloud(){
-  if(!_sb || !currentUser) return;
+  if(!getSB() || !currentUser) return;
   try{
-    const { data, error } = await _sb.from('gymdata').select('data').eq('id', currentUser.id).single();
+    const { data, error } = await getSB().from('gymdata').select('data').eq('id', currentUser.id).single();
     if(error || !data) return;
     const cloudData = data.data;
     // Merge: keep local photos, use cloud for everything else
@@ -2238,7 +2252,7 @@ function updateAccountStatus(){
 }
 
 async function signOut(){
-  if(_sb) await _sb.auth.signOut();
+  if(_sb) await getSB().auth.signOut();
   currentUser = null;
   showAuthScreen();
 }
