@@ -2239,11 +2239,23 @@ document.addEventListener('DOMContentLoaded', function() {
     navigator.serviceWorker.getRegistrations().then(regs=>{regs.forEach(r=>r.unregister());});
   }
   initTheme();
-  initSupabase();
   renderDailyQuote();
   renderSplashStreak();
   renderSeances();
-  checkAuth();
+  // Wait for Supabase library to be available
+  let attempts = 0;
+  const tryInit = setInterval(()=>{
+    attempts++;
+    if(window.supabase){
+      clearInterval(tryInit);
+      initSupabase();
+      checkAuth();
+    } else if(attempts > 20){
+      clearInterval(tryInit);
+      console.log('Supabase not available, offline mode');
+      isOfflineMode = true;
+    }
+  }, 200);
 });
 </script>
 
