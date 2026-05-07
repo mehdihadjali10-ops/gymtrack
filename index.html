@@ -615,7 +615,7 @@ function closeSplash(){
   setTimeout(()=>{
     document.getElementById('splash').style.display='none';
     // If Supabase loaded but no user, show auth
-    if(supabase && !currentUser && !isOfflineMode){
+    if(_sb && !currentUser && !isOfflineMode){
       showAuthScreen();
     }
   },700);
@@ -2055,14 +2055,14 @@ function recoverStreak(){
 // ============================================================
 const SUPABASE_URL = 'https://nkbjxidxykoadaossoka.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5rYmp4aWR4eWtvYWRhb3Nzb2thIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNDg3NDMsImV4cCI6MjA5MzcyNDc0M30.G-yZTmH-rvvdDigHcy36gV4FlS0Xu38kYBB5DarsMOc';
-let supabase = null;
+let _sb = null;
 let currentUser = null;
 let isOfflineMode = false;
 let syncTimeout = null;
 
 function initSupabase(){
   try{
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   }catch(e){
     console.log('Supabase init failed, offline mode');
     isOfflineMode = true;
@@ -2070,9 +2070,9 @@ function initSupabase(){
 }
 
 async function checkAuth(){
-  if(!supabase){ showApp(); return; }
+  if(!_sb){ showApp(); return; }
   try{
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await _sb.auth.getSession();
     if(session){
       currentUser = session.user;
       await loadFromCloud();
@@ -2124,9 +2124,9 @@ async function authAction(){
   try{
     let result;
     if(authMode === 'login'){
-      result = await supabase.auth.signInWithPassword({ email, password });
+      result = await _sb.auth.signInWithPassword({ email, password });
     } else {
-      result = await supabase.auth.signUp({ email, password });
+      result = await _sb.auth.signUp({ email, password });
     }
     if(result.error){
       showAuthError(translateAuthError(result.error.message) + ' [' + result.error.message + ']');
@@ -2165,12 +2165,12 @@ function translateAuthError(msg){
 }
 
 async function saveToCloud(){
-  if(!supabase || !currentUser || isOfflineMode) return;
+  if(!_sb || !currentUser || isOfflineMode) return;
   try{
     const st = getState();
     // Remove photos from cloud save (too large)
     const cloudData = {...st, photos: []};
-    await supabase.from('gymdata').upsert({
+    await _sb.from('gymdata').upsert({
       id: currentUser.id,
       data: cloudData,
       updated_at: new Date().toISOString()
@@ -2181,9 +2181,9 @@ async function saveToCloud(){
 }
 
 async function loadFromCloud(){
-  if(!supabase || !currentUser) return;
+  if(!_sb || !currentUser) return;
   try{
-    const { data, error } = await supabase.from('gymdata').select('data').eq('id', currentUser.id).single();
+    const { data, error } = await _sb.from('gymdata').select('data').eq('id', currentUser.id).single();
     if(error || !data) return;
     const cloudData = data.data;
     // Merge: keep local photos, use cloud for everything else
@@ -2238,7 +2238,7 @@ function updateAccountStatus(){
 }
 
 async function signOut(){
-  if(supabase) await supabase.auth.signOut();
+  if(_sb) await _sb.auth.signOut();
   currentUser = null;
   showAuthScreen();
 }
