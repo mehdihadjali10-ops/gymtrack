@@ -691,43 +691,123 @@ function openWorkout(){
   setTimeout(()=>woAddExercise(), 300);
 }
 
+
+const EX_LIBRARY = {
+  "Dos": [
+    {n:"Tractions",e:"🏋️"},{n:"Rowing barre",e:"🚣"},{n:"Tirage poulie haute",e:"⬇️"},
+    {n:"Rowing haltère",e:"💪"},{n:"Soulevé de terre",e:"🏗️"},{n:"Rowing câble",e:"🔄"},
+    {n:"Tirage serré",e:"🎯"},{n:"Pull-over",e:"🌊"},{n:"Shrugs",e:"🤷"},
+    {n:"Hyperextensions",e:"🔃"}
+  ],
+  "Biceps": [
+    {n:"Curl barre",e:"💪"},{n:"Curl haltères",e:"🦾"},{n:"Curl marteau",e:"🔨"},
+    {n:"Curl câble",e:"〰️"},{n:"Curl pupitre",e:"📐"},{n:"Curl concentration",e:"🎯"},
+    {n:"Curl araignée",e:"🕷️"},{n:"Curl barre EZ",e:"〽️"}
+  ],
+  "Pectoraux": [
+    {n:"Développé couché",e:"🏋️"},{n:"Développé incliné",e:"📈"},{n:"Développé décliné",e:"📉"},
+    {n:"Écarté haltères",e:"🦅"},{n:"Écarté câble",e:"🔀"},{n:"Dips",e:"⬇️"},
+    {n:"Pompes",e:"💯"},{n:"Pec deck",e:"🦋"},{n:"Développé haltères",e:"🤸"}
+  ],
+  "Triceps": [
+    {n:"Extensions triceps",e:"🔝"},{n:"Dips triceps",e:"⬇️"},{n:"Barre au front",e:"😵"},
+    {n:"Pushdown câble",e:"⬇️"},{n:"Extensions nuque",e:"🔙"},{n:"Kickback",e:"🦵"},
+    {n:"Close grip bench",e:"💪"},{n:"Diamond push-ups",e:"💎"}
+  ],
+  "Jambes": [
+    {n:"Squat",e:"🦵"},{n:"Leg press",e:"🚗"},{n:"Fentes",e:"🚶"},{n:"Leg curl",e:"🔄"},
+    {n:"Leg extension",e:"🦵"},{n:"Soulevé de terre jambes tendues",e:"🏗️"},
+    {n:"Hack squat",e:"📐"},{n:"Bulgarian split squat",e:"🇧🇬"},{n:"Goblet squat",e:"🥤"},
+    {n:"Sumo squat",e:"🤼"}
+  ],
+  "Épaules": [
+    {n:"Développé militaire",e:"🪖"},{n:"Élévations latérales",e:"↔️"},{n:"Élévations frontales",e:"⬆️"},
+    {n:"Oiseau",e:"🦅"},{n:"Développé Arnold",e:"🌀"},{n:"Face pull",e:"😤"},
+    {n:"Upright row",e:"⬆️"},{n:"Développé haltères épaules",e:"💪"}
+  ],
+  "Abdos": [
+    {n:"Crunchs",e:"🔄"},{n:"Planche",e:"🪵"},{n:"Relevés de jambes",e:"🦵"},
+    {n:"Russian twist",e:"🔀"},{n:"Ab wheel",e:"⚙️"},{n:"Mountain climbers",e:"🧗"},
+    {n:"Crunchs câble",e:"〰️"},{n:"Hanging leg raise",e:"🪂"}
+  ],
+  "Fessiers": [
+    {n:"Hip thrust",e:"🦋"},{n:"Kickback fessiers",e:"🦵"},{n:"Abduction machine",e:"↔️"},
+    {n:"Fentes bulgares",e:"🇧🇬"},{n:"Good morning",e:"☀️"},{n:"Cable kickback",e:"〰️"},
+    {n:"Sumo deadlift",e:"🏗️"},{n:"Step up",e:"🪜"}
+  ]
+};
+
+function pickExercise(name, muscle){
+  document.getElementById("wo-new-ex-name").value = name;
+  // Auto-select muscle
+  const sel = document.getElementById("wo-new-ex-muscle");
+  if(sel){
+    for(let i=0;i<sel.options.length;i++){
+      if(sel.options[i].value===muscle){sel.selectedIndex=i;break;}
+    }
+  }
+  // Highlight selected
+  document.querySelectorAll(".ex-lib-item").forEach(el=>el.style.background="");
+  event.currentTarget.style.background="var(--accent-bg)";
+  event.currentTarget.style.borderColor="var(--accent)";
+}
+
 function woAddExercise(){
-  // Show a quick bottom sheet to pick exercise name + muscle
   const old=document.getElementById('wo-add-ex-overlay');if(old)old.remove();
   const muscles=getMuscles();
   const overlay=document.createElement('div');
   overlay.id='wo-add-ex-overlay';
   overlay.style.cssText='position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.6);display:flex;align-items:flex-end;';
+
+  // Build library HTML grouped by muscle
+  const libHtml=Object.entries(EX_LIBRARY).map(([group,exos])=>`
+    <div style="margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3);margin-bottom:8px;">${group}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">
+        ${exos.map(ex=>`
+          <div class="ex-lib-item" onclick="pickExercise('${ex.n.replace(/'/g,"\'")}','${group}')"
+            style="display:flex;align-items:center;gap:5px;padding:7px 11px;background:var(--bg);border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:13px;font-weight:600;transition:all .15s;">
+            <span style="font-size:16px;">${ex.e}</span>${ex.n}
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+
   overlay.innerHTML=`
-    <div style="background:var(--card);border-radius:20px 20px 0 0;width:100%;padding:20px 18px calc(20px + var(--sb));" onclick="event.stopPropagation()">
-      <div style="width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 16px;"></div>
-      <div style="font-size:18px;font-weight:700;margin-bottom:14px;">Ajouter un exercice</div>
-      <div style="margin-bottom:12px;">
-        <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:5px;">Nom</label>
-        <input type="text" id="wo-new-ex-name" placeholder="ex : Développé couché" style="width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:9px;font-size:15px;background:var(--bg);color:var(--text);outline:none;">
-      </div>
-      <div style="margin-bottom:12px;">
-        <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:5px;">Groupe musculaire</label>
-        <select id="wo-new-ex-muscle" style="width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:9px;font-size:15px;background:var(--bg);color:var(--text);outline:none;appearance:none;">
-          ${muscles.map(m=>`<option>${m}</option>`).join('')}
-        </select>
-      </div>
-      <div style="margin-bottom:16px;">
-        <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:5px;">Nombre de séries</label>
-        <div style="display:flex;align-items:center;gap:14px;">
-          <button onclick="const v=document.getElementById('wo-new-ex-sets');v.textContent=Math.max(1,parseInt(v.textContent)-1)" style="width:36px;height:36px;border-radius:50%;background:var(--bg);border:1px solid var(--border);font-size:20px;cursor:pointer;">−</button>
-          <span id="wo-new-ex-sets" style="font-size:22px;font-weight:800;min-width:30px;text-align:center;">3</span>
-          <button onclick="const v=document.getElementById('wo-new-ex-sets');v.textContent=parseInt(v.textContent)+1" style="width:36px;height:36px;border-radius:50%;background:var(--bg);border:1px solid var(--border);font-size:20px;cursor:pointer;">+</button>
+    <div style="background:var(--card);border-radius:20px 20px 0 0;width:100%;max-height:88vh;display:flex;flex-direction:column;" onclick="event.stopPropagation()">
+      <div style="padding:16px 18px 0;flex-shrink:0;">
+        <div style="width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 14px;"></div>
+        <div style="font-size:18px;font-weight:700;margin-bottom:12px;">Ajouter un exercice</div>
+        <div style="margin-bottom:10px;">
+          <input type="text" id="wo-new-ex-name" placeholder="Saisie libre ou choisir ci-dessous…"
+            style="width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:11px;font-size:15px;background:var(--bg);color:var(--text);outline:none;font-family:inherit;"
+            onfocus="this.style.borderColor='var(--accent)'">
         </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+          <div style="flex:1;">
+            <select id="wo-new-ex-muscle" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:11px;font-size:14px;background:var(--bg);color:var(--text);outline:none;appearance:none;-webkit-appearance:none;">
+              ${muscles.map(m=>`<option>${m}</option>`).join('')}
+            </select>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+            <button onclick="const v=document.getElementById('wo-new-ex-sets');v.textContent=Math.max(1,parseInt(v.textContent)-1)" style="width:32px;height:32px;border-radius:50%;background:var(--bg);border:1px solid var(--border);font-size:18px;cursor:pointer;">−</button>
+            <span id="wo-new-ex-sets" style="font-size:18px;font-weight:800;min-width:24px;text-align:center;">3</span>
+            <button onclick="const v=document.getElementById('wo-new-ex-sets');v.textContent=parseInt(v.textContent)+1" style="width:32px;height:32px;border-radius:50%;background:var(--bg);border:1px solid var(--border);font-size:18px;cursor:pointer;">+</button>
+            <span style="font-size:12px;color:var(--text3);">séries</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:12px;">
+          <button onclick="document.getElementById('wo-add-ex-overlay').remove()" style="flex:1;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;color:var(--text2);">Annuler</button>
+          <button onclick="woConfirmAddEx()" style="flex:2;padding:12px;background:var(--accent);border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(0,200,150,0.3);">Ajouter</button>
+        </div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3);margin-bottom:8px;padding-bottom:8px;border-bottom:.5px solid var(--border);">Bibliothèque</div>
       </div>
-      <div style="display:flex;gap:8px;">
-        <button onclick="document.getElementById('wo-add-ex-overlay').remove()" style="flex:1;padding:13px;background:var(--bg);border:1px solid var(--border);border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;color:var(--text2);">Annuler</button>
-        <button onclick="woConfirmAddEx()" style="flex:1;padding:13px;background:var(--accent);border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;">Ajouter</button>
+      <div style="overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 18px calc(16px + var(--sb));">
+        ${libHtml}
       </div>
     </div>`;
   overlay.addEventListener('click',()=>overlay.remove());
   document.body.appendChild(overlay);
-  setTimeout(()=>document.getElementById('wo-new-ex-name').focus(),100);
+  setTimeout(()=>document.getElementById('wo-new-ex-name').focus(),300);
 }
 
 function woConfirmAddEx(){
