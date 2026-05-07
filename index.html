@@ -610,7 +610,16 @@ function renderDailyQuote(){
   document.getElementById('splash-quote-text').textContent='"'+q.q+'"';
   document.getElementById('splash-quote-author').textContent='— '+q.a;
 }
-function closeSplash(){document.getElementById('splash').classList.add('hide');setTimeout(()=>{document.getElementById('splash').style.display='none';},700);}
+function closeSplash(){
+  document.getElementById('splash').classList.add('hide');
+  setTimeout(()=>{
+    document.getElementById('splash').style.display='none';
+    // If Supabase loaded but no user, show auth
+    if(supabase && !currentUser && !isOfflineMode){
+      showAuthScreen();
+    }
+  },700);
+}
 
 // ============================================================
 // TABS / NAVIGATION
@@ -2120,7 +2129,7 @@ async function authAction(){
       result = await supabase.auth.signUp({ email, password });
     }
     if(result.error){
-      showAuthError(translateAuthError(result.error.message));
+      showAuthError(translateAuthError(result.error.message) + ' [' + result.error.message + ']');
       btn.textContent = authMode === 'login' ? 'Se connecter' : "S\'inscrire";
       btn.disabled = false;
       return;
@@ -2135,7 +2144,7 @@ async function authAction(){
     updateAccountStatus();
     renderSeances();
   }catch(e){
-    showAuthError('Erreur de connexion. Vérifie ta connexion internet.');
+    showAuthError('Erreur : ' + (e.message || JSON.stringify(e)));
     btn.textContent = authMode === 'login' ? 'Se connecter' : "S\'inscrire";
     btn.disabled = false;
   }
